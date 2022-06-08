@@ -1,3 +1,4 @@
+# README #
 Imported from http://www.ahammer.ch/141
 
 lvmcache-statistics.sh displays the LVM cache statistics
@@ -18,5 +19,11 @@ for more details.
 You should have received a copy of the GNU General Public License along 
 with this program. If not, see http://www.gnu.org/licenses/.
 
-History:
+## Munin support ##
+This version includes transparent munin support:
+it will work correctly under the Munin monitoring tool, but will
+produce human-friendly output when called manually.
+
+## History ##
 20141220 hammerar, initial version
+20220608 aeszter,  munin support

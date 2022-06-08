@@ -42,11 +42,36 @@
 # 20160326 hammerar, bugfix lvm detection and better policy undestanding
 # 20170915 hammerar, bugfix mg instaead of mq typo
 #                    missed cleaner policy
+# 20220608 aeszter,  munin support
 #
 # Todo:
 # - division by zero if you call statitics if not even 1 block is used
 # - fully add cleaner policy
 ##################################################################
+
+if [ -z $MUNIN_MASTER_IP ]; then
+  MUNIN=false
+else
+  MUNIN=true
+fi
+
+if [ $# = 1 ] && [ $1 = config ]; then
+  echo "graph_title LVM Cache"
+  echo "graph_args -l 0"
+  echo "graph_args -u 100"
+  echo "graph_vlabel % percent"
+  echo "read_hits.label Read Hits"
+  echo "write_hits.label Write Hits"
+  echo "usage.label Data Cache Usage"
+  echo "meta_usage.label Metadata Cache Usage"
+  echo "promotions.label Promotions"
+  echo "promotions.type COUNTER"
+  echo "demotions.label Demotions"
+  echo "demotions.type COUNTER"
+  echo "graph_category Disk"
+  exit
+fi
+
 set -o nounset
 
 DEBUG=false
@@ -157,50 +182,62 @@ CacheMetadataMode="${RESULTS[${INDEX}]}"
 INDEX=$((INDEX+1))
 NeedsCheck="${RESULTS[${INDEX}]}"
 
-##################################################################
-# human friendly output
-##################################################################
-echo "-------------------------------------------------------------------------"
-echo -n "LVM [$(lvm version | grep 'LVM' | awk '{ print $3 }')] cache report of "
-if [ $# -ne 0 ]; then
-  echo -n "given "
-else
-  echo -n "found "
-fi
-echo "device ${LVCACHED}"
-echo "-------------------------------------------------------------------------"
-
 MetaUsage=$( echo "scale=1;($NrUsedMetadataBlocks * 100) / $NrTotalMetadataBlocks" | bc)
 CacheUsage=$( echo "scale=1;($NrUsedCacheBlocks * 100) / $NrTotalCacheBlocks" | bc)
-echo "- Cache Usage: ${CacheUsage}% - Metadata Usage: ${MetaUsage}%"
 
 ReadRate=$( echo "scale=1;($NrReadHits * 100) / ($NrReadMisses + $NrReadHits)" | bc)
 WriteRate=$( echo "scale=1;($NrWriteHits * 100) / ($NrWriteMisses + $NrWriteHits)" | bc)
-echo "- Read Hit Rate: ${ReadRate}% - Write Hit Rate: ${WriteRate}%"
-echo "- Demotions/Promotions/Dirty: ${NrDemotions}/${NrPromotions}/${NrDirty}"
-echo "- Feature arguments in use: ${FeatureArgs}"
-echo "- Core arguments in use : ${CoreArgs}"
 
-echo -n "  - Cache Policy: "
-case $CachePolicy in
-  mq)   echo "multiqueue (mq)"
-        echo "  - Policy arguments in use: ${PolicyArgs}"
-        ;;
-  smq)  echo "stochastic multiqueue (smq)"
-        ;;
-  cleaner) echo "cleaner"
-        ;;
-  *)    echo " *** ooops *** - unknown policy <${CachePolicy}>"
-        ;;
-esac
+if ! $MUNIN; then
+  ##################################################################
+  # human friendly output
+  ##################################################################
+  echo "-------------------------------------------------------------------------"
+  echo -n "LVM [$(lvm version | grep 'LVM' | awk '{ print $3 }')] cache report of "
+  if [ $# -ne 0 ]; then
+    echo -n "given "
+  else
+    echo -n "found "
+  fi
+  echo "device ${LVCACHED}"
+  echo "-------------------------------------------------------------------------"
 
-echo "- Cache Metadata Mode: ${CacheMetadataMode}"
-echo -n "- MetaData Operation Health: "
 
-if [ "${NeedsCheck}" == "-" ]; then
-  echo "ok"
+
+  echo "- Cache Usage: ${CacheUsage}% - Metadata Usage: ${MetaUsage}%"
+  echo "- Read Hit Rate: ${ReadRate}% - Write Hit Rate: ${WriteRate}%"
+  echo "- Demotions/Promotions/Dirty: ${NrDemotions}/${NrPromotions}/${NrDirty}"
+  echo "- Feature arguments in use: ${FeatureArgs}"
+  echo "- Core arguments in use : ${CoreArgs}"
+
+  echo -n "  - Cache Policy: "
+  case $CachePolicy in
+    mq)   echo "multiqueue (mq)"
+          echo "  - Policy arguments in use: ${PolicyArgs}"
+          ;;
+    smq)  echo "stochastic multiqueue (smq)"
+          ;;
+    cleaner) echo "cleaner"
+          ;;
+    *)    echo " *** ooops *** - unknown policy <${CachePolicy}>"
+          ;;
+  esac
+
+  echo "- Cache Metadata Mode: ${CacheMetadataMode}"
+  echo -n "- MetaData Operation Health: "
+
+  if [ "${NeedsCheck}" == "-" ]; then
+    echo "ok"
+  else
+    echo "needs-check"
+  fi
 else
-  echo "needs-check"
+    echo "read_hits.value $ReadRate"
+    echo "write_hits.value $WriteRate"
+    echo "usage.value $CacheUsage"
+    echo "meta_usage.value $MetaUsage"
+    echo "promotions.value $NrPromotions"
+    echo "demotions.value $NrDemotions"
 fi
 
 #### EOF #########################################################
