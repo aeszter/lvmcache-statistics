@@ -25,5 +25,5 @@ it will work correctly under the Munin monitoring tool, but will
 produce human-friendly output when called manually.
 
 ## History ##
-20141220 hammerar, initial version
-20220608 aeszter,  munin support
+ * 20141220 hammerar, initial version
+ * 20220608 aeszter,  munin support
