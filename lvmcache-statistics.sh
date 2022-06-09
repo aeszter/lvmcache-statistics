@@ -74,6 +74,12 @@ fi
 
 set -o nounset
 
+if lvs -o lv_fullname >/dev/null 2>&1 ; then
+  OPT_FULLNAME=lv_fullname
+else
+  OPT_FULLNAME=lv_full_name
+fi
+
 DEBUG=false
 #DEBUG=true
 
@@ -82,7 +88,7 @@ if [ $# -ne 0 ]; then
   LVCACHED=$1
 else
   # LVCACHED=/dev/vg00/lvol0
-  LVCACHED="/dev/$( lvs --noheadings -o lv_fullname,cache_policy | egrep -w "mq|smq|cleaner" | head -n 1 | awk '{ print $1 }')"
+  LVCACHED="/dev/$( lvs --noheadings -o $OPT_FULLNAME,cache_policy | egrep -w "mq|smq|cleaner" | head -n 1 | awk '{ print $1 }')"
 fi
 
 RESULT=$(dmsetup status ${LVCACHED})
